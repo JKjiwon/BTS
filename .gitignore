@@ -126,7 +126,6 @@ dmypy.json
 
 # Mac
 .DS_Store
-uploads/
 node_modules/
 # Elastic Beanstalk Files
 .elasticbeanstalk/*
