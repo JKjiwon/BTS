@@ -83,6 +83,16 @@ class ChangePasswordSerializer(serializers.Serializer):
     """
     old_password = serializers.CharField(required=True)
     new_password = serializers.CharField(required=True)
+    new_password_confirm = serializers.CharField(required=True)
+
+    def validate(self, data):
+        new_password = data.get("new_password")
+        new_password_confirm = data.get("new_password_confirm")
+
+        if new_password != new_password_confirm:
+            raise serializers.ValidationError({"new_password": "비밀번호를 확인해주세요"})
+
+        return data
 
     def validate_new_password(self, value):
         password_validation.validate_password(value, self.instance)
@@ -103,12 +113,12 @@ class FindUsernameSerializer(serializers.Serializer):
             obj = User.objects.get(phone_number=phone_number)
         except self.model.DoesNotExist:
             raise serializers.ValidationError(
-                {"오류": "입력하신 이름과 휴대폰번호에 해당하는 회원정보를 찾지 못했습니다. 다시 확인해주세요."}
+                "입력하신 이름과 휴대폰번호에 해당하는 회원정보를 찾지 못했습니다. 다시 확인해주세요."
             )
 
         if not obj.real_name == real_name:
             raise serializers.ValidationError(
-                {"오류": "입력하신 이름과 휴대폰번호에 해당하는 회원정보를 찾지 못했습니다. 다시 확인해주세요."}
+                "입력하신 이름과 휴대폰번호에 해당하는 회원정보를 찾지 못했습니다. 다시 확인해주세요."
             )
         return data
 
@@ -129,11 +139,11 @@ class FindPasswordSerializer(serializers.Serializer):
             obj = User.objects.get(username=username)
         except self.model.DoesNotExist:
             raise serializers.ValidationError(
-                {"error": "입력하신 ID와 이름과 휴대폰번호에 해당하는 회원정보를 찾지 못했습니다. 다시 확인해주세요."}
+                "입력하신 ID와 이름과 휴대폰번호에 해당하는 회원정보를 찾지 못했습니다. 다시 확인해주세요."
             )
 
         if not (obj.real_name == real_name and obj.phone_number == phone_number):
             raise serializers.ValidationError(
-                {"error": "입력하신 ID와 이름과 휴대폰번호에 해당하는 회원정보를 찾지 못했습니다. 다시 확인해주세요."}
+                "입력하신 ID와 이름과 휴대폰번호에 해당하는 회원정보를 찾지 못했습니다. 다시 확인해주세요."
             )
         return data

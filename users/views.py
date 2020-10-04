@@ -124,17 +124,13 @@ class ChangePasswordView(UpdateAPIView):
             # Check old password
             if not self.object.check_password(serializer.data.get("old_password")):
                 return Response(
-                    {"old_password": ["Wrong password."]},
-                    status=status.HTTP_400_BAD_REQUEST,
+                    {"old_password": "비빌번호가 틀립니다."}, status=status.HTTP_400_BAD_REQUEST,
                 )
             # set_password also hashes the password that the user will get
             self.object.set_password(serializer.data.get("new_password"))
             self.object.save()
             response = {
-                "status": "success",
-                "code": status.HTTP_200_OK,
-                "message": "Password updated successfully",
-                "data": [],
+                "success": "비밀번호가 변경되었습니다.",
             }
             return Response(response)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -150,8 +146,6 @@ def findPassword(request):
         obj.set_password(new_password)
         obj.save()
         response = {
-            "status": "success",
-            "code": status.HTTP_200_OK,
             "new_password": new_password,
         }
         return Response(response)
@@ -166,8 +160,6 @@ def findUsername(request):
         obj = User.objects.get(phone_number=phone_number)
         username = obj.username
         response = {
-            "status": "success",
-            "code": status.HTTP_200_OK,
             "username": username,
         }
         return Response(response)
