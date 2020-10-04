@@ -24,9 +24,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = "rkrywpih0qzq-mub6@+pd2!j2kd+!m012^ni3z8u9b17@dkvd2"
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = bool(os.environ.get("DEBUG"))
+DEBUG = TRUE
+# DEBUG = bool(os.environ.get("DEBUG"))
 
-ALLOWED_HOSTS = [".elasticbeanstalk.com", "127.0.0.1"]
+ALLOWED_HOSTS = [*]
 
 
 # Application definition
@@ -90,7 +91,14 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/3.1/ref/settings/#databases
 
-if "RDS_DB_NAME" in os.environ:
+if DEBUG:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }    
+else:
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.mysql",
@@ -99,13 +107,6 @@ if "RDS_DB_NAME" in os.environ:
             "PASSWORD": os.environ["RDS_PASSWORD"],
             "HOST": os.environ["RDS_HOSTNAME"],
             "PORT": os.environ["RDS_PORT"],
-        }
-    }
-else:
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "db.sqlite3",
         }
     }
 
