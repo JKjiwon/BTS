@@ -15,38 +15,40 @@ from .serializers import (
     FindUsernameSerializer,
 )
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
-from .permissions import IsAdminUserRead
-from locations.pagination import PageNumberPagination
-
-
-class StandardResultsSetPagination(PageNumberPagination):
-    page_size = 10
-    page_size_query_param = "page_size"
-    max_page_size = 1000
+from .permissions import IsAdminUserReadOnly
+from config.pagination import UserResultPagination
 
 
 class UserList(APIView):
-    permission_classes = (IsAdminUserRead,)
+    """
+    회원 관리(보기, 생성)를 위한 EndPoint
+    """
+
+    permission_classes = (IsAdminUserReadOnly,)
 
     def get(self, request):
         users = User.objects.all()
         if len(users) > 0:
-            paginator = StandardResultsSetPagination()
+            paginator = UserResultPagination()
             result_page = paginator.paginate_queryset(users, request)
             serializer = UserSerializer(result_page, many=True)
             return paginator.get_paginated_response(serializer.data)
         else:
-            return Response({}, status=status.HTTP_200_OK)
+            return Response()
 
     def post(self, request, format=None):
         serializer = UserSerializerWithToken(data=request.data)
-        if serializer.is_valid():
+        if serializer.is_valid(raise_exception=True):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class MeView(APIView):
+    """
+    내 정보 관리(보기, 수정, 삭제)를 위한 EndPoint
+    """
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -54,7 +56,7 @@ class MeView(APIView):
 
     def put(self, request):
         serializer = UserSerializer(request.user, data=request.data, partial=True)
-        if serializer.is_valid():
+        if serializer.is_valid(raise_exception=True):
             serializer.save()
             return Response(UserSerializer(request.user).data)
         else:
@@ -67,6 +69,10 @@ class MeView(APIView):
 
 
 class FavsView(APIView):
+    """
+    "좋아요" 목록 관리(보기, 수정)를 위한 EndPoint
+    """
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -105,7 +111,7 @@ def user_detail(request, pk):
 
 class ChangePasswordView(UpdateAPIView):
     """
-    An endpoint for changing password.
+    비빌번호 변경을 위한 EndPoint
     """
 
     serializer_class = ChangePasswordSerializer
@@ -120,13 +126,7 @@ class ChangePasswordView(UpdateAPIView):
         self.object = self.get_object()
         serializer = self.get_serializer(data=request.data)
 
-        if serializer.is_valid():
-            # Check old password
-            if not self.object.check_password(serializer.data.get("old_password")):
-                return Response(
-                    {"old_password": "비빌번호가 틀립니다."}, status=status.HTTP_400_BAD_REQUEST,
-                )
-            # set_password also hashes the password that the user will get
+        if serializer.is_valid(raise_exception=True):
             self.object.set_password(serializer.data.get("new_password"))
             self.object.save()
             response = {
@@ -137,30 +137,37 @@ class ChangePasswordView(UpdateAPIView):
 
 
 @api_view(["POST"])
-def findPassword(request):
-    serializer = FindPasswordSerializer(data=request.data)
-    if serializer.is_valid():
-        username = serializer.data.get("username")
-        obj = User.objects.get(username=username)
-        new_password = username + str(random.randint(100, 999))
-        obj.set_password(new_password)
-        obj.save()
+def findUsername(request):
+    """
+    ID를 찾기 위한 EndPoint
+    """
+    serializer = FindUsernameSerializer(data=request.data)
+    if serializer.is_valid(raise_exception=True):
+        phone_number = serializer.data.get("phone_number")
+        obj = User.objects.get(phone_number=phone_number)
+        username = obj.username
         response = {
-            "new_password": new_password,
+            "success": username,
         }
         return Response(response)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(["POST"])
-def findUsername(request):
-    serializer = FindUsernameSerializer(data=request.data)
-    if serializer.is_valid():
-        phone_number = serializer.data.get("phone_number")
-        obj = User.objects.get(phone_number=phone_number)
-        username = obj.username
+def findPassword(request):
+    """
+    Password를 찾기 위한 EndPoint
+    """
+    serializer = FindPasswordSerializer(data=request.data)
+    if serializer.is_valid(raise_exception=True):
+        username = serializer.data.get("username")
+        obj = User.objects.get(username=username)
+        new_password = username + str(random.randint(100, 999))
+        obj.set_password(new_password)
+        obj.save()
         response = {
-            "username": username,
+            "success": new_password,
         }
         return Response(response)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+

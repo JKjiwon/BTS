@@ -5,11 +5,11 @@ from rest_framework_jwt.views import (
     refresh_jwt_token,
 )
 from . import views
-from config.views import validate_jwt_token
+from config.views import validate_jwt_token, CustomObtainJSONWebToken
 
 
 app_name = "users"
-
+# 회원, 로그인 관련 EndPoint(URL) 생성
 urlpatterns = [
     path("", views.UserList.as_view()),
     path("validate/", validate_jwt_token),

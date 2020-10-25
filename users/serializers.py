@@ -1,10 +1,16 @@
 from django.contrib.auth import password_validation
 from rest_framework import serializers
 from rest_framework_jwt.settings import api_settings
+from rest_framework.validators import UniqueValidator
+from django.utils.translation import ugettext_lazy as _
 from .models import User
 
 
 class UserSerializer(serializers.ModelSerializer):
+    """
+    회원 읽기 Serializer
+    """
+
     class Meta:
         model = User
         fields = (
@@ -16,12 +22,17 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class UserSerializerWithToken(serializers.ModelSerializer):
+    """
+    회원 생성 Serializer
+    """
+
     token = serializers.SerializerMethodField()
     real_name = serializers.CharField(required=True)
     phone_number = serializers.CharField(required=True)
     password = serializers.CharField(write_only=True)
     password_confirm = serializers.CharField(required=True, write_only=True)
 
+    # 회원 생성시 JWT토큰 반환
     def get_token(self, obj):
         jwt_payload_handler = api_settings.JWT_PAYLOAD_HANDLER
         jwt_encode_handler = api_settings.JWT_ENCODE_HANDLER
@@ -30,18 +41,21 @@ class UserSerializerWithToken(serializers.ModelSerializer):
         token = jwt_encode_handler(payload)
         return token
 
+    # 회원가입 시 비멀번호 유효성 검사
     def validate_password(self, value):
         password_validation.validate_password(value, self.instance)
         return value
 
+    # 회원가입 시 비멀번호와 확인 비밀번호가 같은지 검사
     def validate(self, data):
         password = data.get("password")
         password_confirm = data.get("password_confirm")
         if password != password_confirm:
-            raise serializers.ValidationError({"password": "비밀번호를 확인해주세요"})
+            raise serializers.ValidationError({"비밀번호": ["다시 확인해주세요"]})
         password_validation.validate_password(password, self.instance)
         return data
 
+    # 회원가입 시 비밀번호 암호화 설정
     def create(self, validated_data):
         validated_data.pop("password_confirm")
         password = validated_data.get("password")
@@ -50,9 +64,10 @@ class UserSerializerWithToken(serializers.ModelSerializer):
         user.save()
         return user
 
-    # 핸드폰 번호가 유효한지, 즉 이미 존재하는 번호인지 아닌지를 체크한다.
-    def validate_phone_number(self, value):
-        check_query = User.objects.filter(phone_number=value)
+    # 핸드폰 번호가 이미 존재하는 번호인지 아닌지 검사
+    def validate(self, data):
+        phone_number = data.get("phone_number")
+        check_query = User.objects.filter(phone_number=phone_number)
         if self.instance:
             check_query = check_query.exclude(pk=self.instance.pk)
 
@@ -61,8 +76,8 @@ class UserSerializerWithToken(serializers.ModelSerializer):
             check_query = check_query.exclude(pk=user.pk)
 
         if check_query.exists():
-            raise serializers.ValidationError("해당 사용자 휴대폰 번호은 이미 존재합니다.")
-        return value
+            raise serializers.ValidationError({"휴대폰 번호": ["이미 존재합니다."]})
+        return data
 
     class Meta:
         model = User
@@ -74,37 +89,56 @@ class UserSerializerWithToken(serializers.ModelSerializer):
             "password",
             "password_confirm",
         )
+        extra_kwargs = {
+            "username": {
+                "validators": [
+                    UniqueValidator(
+                        queryset=User.objects.all(), message=_("이미 존재합니다."),
+                    )
+                ]
+            },
+        }
 
 
 class ChangePasswordSerializer(serializers.Serializer):
+    """
+    비밀번호 변경 Serializer
+    """
+
     model = User
-    """
-    Serializer for password change endpoint.
-    """
-    old_password = serializers.CharField(required=True)
+    password = serializers.CharField(required=True)
     new_password = serializers.CharField(required=True)
     new_password_confirm = serializers.CharField(required=True)
 
     def validate(self, data):
-        new_password = data.get("new_password")
-        new_password_confirm = data.get("new_password_confirm")
+        # 현재 비밀번호가 맞는지 확인 검사
+        user = self.context["request"].user
+        password = data.get("password")
+        if not user.check_password(password):
+            raise serializers.ValidationError({"비밀번호": ["잘못되었습니다."]})
 
+        # 새 비밀번호 유효성 검사
+        new_password = data.get("new_password")
+        password_validation.validate_password(new_password, self.instance)
+
+        # 새 비밀번호와 확인 비밀번호가 같은지 검사
+        new_password_confirm = data.get("new_password_confirm")
         if new_password != new_password_confirm:
-            raise serializers.ValidationError({"new_password": "비밀번호를 확인해주세요"})
+            raise serializers.ValidationError({"새 비밀번호": ["다시 확인해주세요"]})
 
         return data
 
-    def validate_new_password(self, value):
-        password_validation.validate_password(value, self.instance)
-        return value
-
 
 class FindUsernameSerializer(serializers.Serializer):
-    model = User
+    """
+    회원 ID 찾기 Serializer
+    """
 
+    model = User
     real_name = serializers.CharField(required=True)
     phone_number = serializers.CharField(required=True)
 
+    # 입력한 정보에 해당하는 회원이 있는지 확인
     def validate(self, data):
         real_name = data.get("real_name")
         phone_number = data.get("phone_number")
@@ -113,23 +147,27 @@ class FindUsernameSerializer(serializers.Serializer):
             obj = User.objects.get(phone_number=phone_number)
         except self.model.DoesNotExist:
             raise serializers.ValidationError(
-                "입력하신 이름과 휴대폰번호에 해당하는 회원정보를 찾지 못했습니다. 다시 확인해주세요."
+                {"실패": ["입력하신 이름과 휴대폰번호에 해당하는 회원정보를 찾지 못했습니다."]}
             )
 
         if not obj.real_name == real_name:
             raise serializers.ValidationError(
-                "입력하신 이름과 휴대폰번호에 해당하는 회원정보를 찾지 못했습니다. 다시 확인해주세요."
+                {"실패": ["입력하신 이름과 휴대폰번호에 해당하는 회원정보를 찾지 못했습니다."]}
             )
         return data
 
 
 class FindPasswordSerializer(serializers.Serializer):
-    model = User
+    """
+    회원 Password 찾기 Serializer
+    """
 
+    model = User
     username = serializers.CharField(required=True)
     real_name = serializers.CharField(required=True)
     phone_number = serializers.CharField(required=True)
 
+    # 입력한 정보에 해당하는 회원이 있는지 확인
     def validate(self, data):
         username = data.get("username")
         real_name = data.get("real_name")
@@ -139,11 +177,11 @@ class FindPasswordSerializer(serializers.Serializer):
             obj = User.objects.get(username=username)
         except self.model.DoesNotExist:
             raise serializers.ValidationError(
-                "입력하신 ID와 이름과 휴대폰번호에 해당하는 회원정보를 찾지 못했습니다. 다시 확인해주세요."
+                {"실패": ["입력하신 ID와 이름과 휴대폰번호에 해당하는 회원정보를 찾지 못했습니다."]}
             )
 
         if not (obj.real_name == real_name and obj.phone_number == phone_number):
             raise serializers.ValidationError(
-                "입력하신 ID와 이름과 휴대폰번호에 해당하는 회원정보를 찾지 못했습니다. 다시 확인해주세요."
+                {"실패": ["입력하신 ID와 이름과 휴대폰번호에 해당하는 회원정보를 찾지 못했습니다."]}
             )
         return data

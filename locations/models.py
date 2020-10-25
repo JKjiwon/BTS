@@ -4,7 +4,7 @@ from imagekit.processors import ResizeToFill
 
 
 class Photo(models.Model):
-    """ Photo Model Definition """
+    """ Photo 모델 정의 """
 
     image = ProcessedImageField(
         upload_to="location_photos",  # 저장 위치
@@ -14,31 +14,31 @@ class Photo(models.Model):
     )
     location = models.ForeignKey(
         "Location", related_name="photos", on_delete=models.CASCADE
-    )
+    )  # 사진의 장소,  Location 의 ForeignKey
 
     def __str__(self):
         return self.location.name
 
     class Meta:
-        ordering = ("-pk",)
+        ordering = ("-pk",)  # 나중에 생성된 장소가 맨위에 오도록 정렬
 
 
 class Location(models.Model):
-    """Location Model Definition"""
+    """장소 모델 정의"""
 
     creator = models.ForeignKey(
         "users.User", related_name="locations", on_delete=models.CASCADE
-    )
-    name = models.CharField(max_length=140)
-    description = models.TextField(default="")
-    city = models.CharField(max_length=80)
-    address = models.CharField(max_length=150)
-    lat = models.DecimalField(max_digits=10, decimal_places=6)
-    lon = models.DecimalField(max_digits=10, decimal_places=6)
-    category = models.CharField(max_length=140)
+    )  # 장소 생성자, User의 ForeignKey
+    name = models.CharField(max_length=140)  # 장소이름
+    description = models.TextField(default="")  # 장소설명
+    city = models.CharField(max_length=80)  # 도시명
+    address = models.CharField(max_length=150)  # 주소
+    lat = models.DecimalField(max_digits=10, decimal_places=6)  # 위도
+    lon = models.DecimalField(max_digits=10, decimal_places=6)  # 경도
+    category = models.CharField(max_length=140)  # 장소 카테고리
 
     class Meta:
-        ordering = ("-pk",)
+        ordering = ("-pk",)  # 나중에 생성된 장소가 맨위에 오도록 정렬
 
     def __str__(self):
         return self.name

@@ -22,10 +22,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get("SECRET_KEY")
+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 # DEBUG = bool(os.environ.get("DEBUG"))
-
 ALLOWED_HOSTS = ["*"]
 
 
@@ -89,29 +89,16 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 # Database
 # https://docs.djangoproject.com/en/3.1/ref/settings/#databases
-
-if DEBUG:
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "db.sqlite3",
-        }
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",
     }
-else:
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.mysql",
-            "NAME": os.environ["RDS_DB_NAME"],
-            "USER": os.environ["RDS_USERNAME"],
-            "PASSWORD": os.environ["RDS_PASSWORD"],
-            "HOST": os.environ["RDS_HOSTNAME"],
-            "PORT": os.environ["RDS_PORT"],
-        }
-    }
-
+}
 # Password validation
 # https://docs.djangoproject.com/en/3.1/ref/settings/#auth-password-validators
 
+# 비밀번호 유효성 체크
 AUTH_PASSWORD_VALIDATORS = [
     {
         "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
@@ -141,11 +128,28 @@ USE_TZ = True
 
 STATIC_URL = "/static/"
 
+# 장소 관련 사진 저장 위치
 MEDIA_ROOT = os.path.join(BASE_DIR, "uploads")
 MEDIA_URL = "/media/"
 
+
+# JWT 관련 설정
+JWT_AUTH = {
+    "JWT_SECRET_KEY": SECRET_KEY,
+    "JWT_ALGORITHM": "HS256",
+    "JWT_VERIFY_EXPIRATION": True,
+    "JWT_ALLOW_REFRESH": True,
+    "JWT_EXPIRATION_DELTA": datetime.timedelta(hours=12),
+    "JWT_REFRESH_EXPIRATION_DELTA": datetime.timedelta(hours=24),
+    "JWT_RESPONSE_PAYLOAD_HANDLER": "config.custom_responses.my_jwt_response_handler",
+}
+
+# 유저 모델 커스텀
+AUTH_USER_MODEL = "users.User"
+
+# Django rest framework 관련 설정
 REST_FRAMEWORK = {
-    "DEFAULT_PAGINATION_CLASS": "locations.pagination.CustomResultsSetPagination",
+    "DEFAULT_PAGINATION_CLASS": "config.pagination.LocationResultPagination",
     "PAGE_SIZE": 5,
     "DEFAULT_FILTER_BACKENDS": (
         "django_filters.rest_framework.DjangoFilterBackend",
@@ -156,15 +160,5 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_jwt.authentication.JSONWebTokenAuthentication",
     ),
+    "EXCEPTION_HANDLER": "config.custom_error_response.custom_exception_handler",
 }
-
-JWT_AUTH = {
-    "JWT_SECRET_KEY": SECRET_KEY,
-    "JWT_ALGORITHM": "HS256",
-    "JWT_VERIFY_EXPIRATION": True,
-    "JWT_ALLOW_REFRESH": True,
-    "JWT_EXPIRATION_DELTA": datetime.timedelta(minutes=30),
-    "JWT_REFRESH_EXPIRATION_DELTA": datetime.timedelta(hours=1),
-    "JWT_RESPONSE_PAYLOAD_HANDLER": "config.custom_responses.my_jwt_response_handler",
-}
-AUTH_USER_MODEL = "users.User"

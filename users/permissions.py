@@ -1,8 +1,10 @@
 from rest_framework import permissions
 
 
-class IsAdminUserRead(permissions.BasePermission):
-    """어드민 유저일 경우 Read 가능"""
+class IsAdminUserReadOnly(permissions.BasePermission):
+    """
+    Admin 유저일 경우 읽기 가능
+    """
 
     def has_permission(self, request, view):
         if request.method == "POST":

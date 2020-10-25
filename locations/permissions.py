@@ -2,8 +2,11 @@ from rest_framework import permissions
 from .models import Location
 
 
-# 장소에 대한 권한
 class IsOwnerOrReadOnly(permissions.BasePermission):
+    """
+    장소에 대한 권한
+    """
+
     def has_object_permission(self, request, view, obj):
         if request.method in permissions.SAFE_METHODS:
             return True
@@ -11,20 +14,9 @@ class IsOwnerOrReadOnly(permissions.BasePermission):
             return obj.creator == request.user
 
 
-class IsReadOnly(permissions.BasePermission):
+class IsCreatordOrReadOnly(permissions.BasePermission):
     """
-    Object-level permission to only allow read-only operations.
-    """
-
-    def has_permission(self, request, view):
-        if request.method in permissions.SAFE_METHODS:
-            return True
-
-
-# 사진 성생에 대한 권한
-class CreatePermission(permissions.BasePermission):
-    """
-    Object-level permission to only allow read-only operations.
+    사진 성생에 대한 권한, 장소를 만든 사람만 접근 가능
     """
 
     def has_permission(self, request, view):
@@ -35,8 +27,11 @@ class CreatePermission(permissions.BasePermission):
             return location.creator == request.user
 
 
-# 사진 수정에 대한 권한
 class IsLocationCreatorOrReadOnly(permissions.BasePermission):
+    """
+    사진 수정에 대한 권한, 장소를 만든 사람만 접근 가능
+    """
+
     def has_object_permission(self, request, view, obj):
         if request.method in permissions.SAFE_METHODS:
             return True
